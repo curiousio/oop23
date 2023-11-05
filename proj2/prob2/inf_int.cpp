@@ -1,24 +1,17 @@
 #include "inf_int.h"
 
-/*
-Originally written by
-컴퓨터공학부
-정진경
-*/
-
 inf_int::inf_int() {
-  this->digits = new char[2];  // 동적할당
+  this->digits = std::string();
 
-  this->digits[0] = '0';  // default 값 0 설정
-  this->digits[1] = '\0';
+  this->digits.push_back('0');  // default value 0
   this->length = 1;
   this->thesign = true;
 }
 
 inf_int::inf_int(int n) {
-  char buf[100];
+  char buffer[100];
 
-  if (n < 0) {  // 음수 처리
+  if (n < 0) {
     this->thesign = false;
     n = -n;
   } else {
@@ -26,51 +19,73 @@ inf_int::inf_int(int n) {
   }
 
   int i = 0;
-  while (n > 0) {  // 숫자를 문자열로 변환하는 과정
-    buf[i] = n % 10 + '0';
+  while (n > 0) {
+    buffer[i] = n % 10 + '0';
 
     n /= 10;
     i++;
   }
 
-  if (i == 0) {  // 숫자의 절댓값이 0일 경우
-    new (this) inf_int();  // 생성자 재호출...gcc에서 컴파일에러가 있다고 함.
-                           // inf_int()의 경우 별개의 인스턴스가 생성됨.
+  if (i == 0) {
+    new (this) inf_int();
   } else {
-    buf[i] = '\0';
+    buffer[i] = '\0';
 
-    this->digits = new char[i + 1];
+    this->digits = std::string();
     this->length = i;
-    strcpy(this->digits, buf);
+    for (int j = 0; j < i + 1; j++) {
+      if (buffer[j] == '\0') {
+        break;
+      } else {
+        this->digits.push_back(buffer[j]);
+      }
+    }
   }
 }
 
 inf_int::inf_int(const char* str) {
-  // to be filled
-  // 부호 처리
-  // "100"이 들어왔다면 내부 표현에 맞게 "001"로 변환
-  // ex) "-1053" -> thesign=false, digits="3501", len=4
+  if (str[0] == '-') {
+    this->thesign = false;
+  } else {
+    this->thesign = true;
+  }
+
+  this->digits = std::string();
+  size_t length = strlen(str);
+
+  if (this->thesign) {
+    for (int i = 0; i < length; i++) {
+      this->digits.push_back(str[length - 1 - i]);
+    }
+    this->length = (unsigned int)length;
+  } else {
+    for (int i = 0; i < length - 1; i++) {
+      this->digits.push_back(str[length - 1 - i]);
+    }
+    this->length = (unsigned int)length - 1;
+  }
 }
 
 inf_int::inf_int(const inf_int& a) {
-  this->digits = new char[a.length + 1];
+  this->digits = std::string();
 
-  strcpy(this->digits, a.digits);
+  for (unsigned int i = 0; i < a.length; i++) {
+    this->digits.push_back(a.digits[i]);
+  }
   this->length = a.length;
   this->thesign = a.thesign;
 }
 
 inf_int::~inf_int() {
-  delete digits;  // 메모리 할당 해제
+  // destructor
 }
 
 inf_int& inf_int::operator=(const inf_int& a) {
-  if (this->digits) {
-    delete this->digits;  // 이미 문자열이 있을 경우 제거.
-  }
-  this->digits = new char[a.length + 1];
+  this->digits = std::string();
 
-  strcpy(this->digits, a.digits);
+  for (unsigned int i = 0; i < a.length; i++) {
+    this->digits.push_back(a.digits[i]);
+  }
   this->length = a.length;
   this->thesign = a.thesign;
 
@@ -78,10 +93,10 @@ inf_int& inf_int::operator=(const inf_int& a) {
 }
 
 bool operator==(const inf_int& a, const inf_int& b) {
-  // we assume 0 is always positive.
-  if ((strcmp(a.digits, b.digits) == 0) &&
-      a.thesign == b.thesign)  // 부호가 같고, 절댓값이 일치해야함.
+  // 0 is always positive
+  if ((a.digits == b.digits) && (a.thesign == b.thesign)) {
     return true;
+  }
   return false;
 }
 
@@ -90,12 +105,17 @@ bool operator!=(const inf_int& a, const inf_int& b) {
 }
 
 bool operator>(const inf_int& a, const inf_int& b) {
-  // to be filled
-  // 절대값 비교
-  // 둘 다 양수일 경우 절댓값 비교한 것을 그대로 return
-  // 둘 다 음수일 경우 절댓값 비교의 것을 반전하여 return
-  // 부호가 다를 경우, a가 양수일 경우 b는 음수, a가 음수일 경우 b는 양수이기에
-  // a의 부호진리값을 반환하면 됨
+  if (a == b) {
+    return false;
+  } else {
+    if (a.thesign && b.thesign) {
+      return absCmp(a, b);
+    } else if (!a.thesign && !b.thesign) {
+      return !absCmp(a, b);
+    } else {
+      return a.thesign;
+    }
+  }
 }
 
 bool operator<(const inf_int& a, const inf_int& b) {
@@ -109,19 +129,20 @@ bool operator<(const inf_int& a, const inf_int& b) {
 inf_int operator+(const inf_int& a, const inf_int& b) {
   inf_int c;
   unsigned int i;
+  c.digits = std::string();
 
-  if (a.thesign == b.thesign) {  // 이항의 부호가 같을 경우 + 연산자로 연산
-    for (i = 0; i < a.length; i++) {
-      c.Add(a.digits[i], i + 1);
-    }
-    for (i = 0; i < b.length; i++) {
-      c.Add(b.digits[i], i + 1);
+  if (a.thesign == b.thesign) {
+    if (a.length > b.length) {
+      c.Add(a, b);
+    } else {
+      c.Add(b, a);
     }
 
+    c.length = (unsigned int)c.digits.length();
     c.thesign = a.thesign;
 
     return c;
-  } else {  // 이항의 부호가 다를 경우 - 연산자로 연산
+  } else {
     c = b;
     c.thesign = a.thesign;
 
@@ -130,53 +151,162 @@ inf_int operator+(const inf_int& a, const inf_int& b) {
 }
 
 inf_int operator-(const inf_int& a, const inf_int& b) {
-  // to be filled
+  inf_int c;
+  c.digits = std::string();
+
+  if (absCmp(a, b)) {  // a > b
+    if (a.thesign == b.thesign) {
+      c.Sub(a, b);
+      c.thesign = a.thesign;
+    } else {
+      inf_int temp = b;
+      temp.thesign = a.thesign;
+      c = a + temp;
+    }
+  } else if (a.digits == b.digits) {  // a == b
+    if (a.thesign == b.thesign) {
+      c = inf_int();  // return 0
+    } else {
+      c = a + a;
+      c.thesign = a.thesign;
+    }
+  } else {  // a < b
+    if (a.thesign == b.thesign) {
+      c.Sub(b, a);
+      if (a.thesign) {
+        c.thesign = false;
+      } else {
+        c.thesign = true;
+      }
+    } else {
+      inf_int temp = b;
+      temp.thesign = a.thesign;
+      c = a + temp;
+    }
+  }
+
+  return c;
 }
 
 inf_int operator*(const inf_int& a, const inf_int& b) {
-  // to be filled
+  inf_int c;
+
+  if (isZero(a) || isZero(b)) {
+    c = inf_int();
+    return c;
+  } else {
+    c.digits = std::string(a.length + b.length, 0);
+    if (a.thesign == b.thesign) {
+      c.thesign = true;
+    } else {
+      c.thesign = false;
+    }
+
+    for (unsigned int i = 0; i < a.length; i++) {
+      for (unsigned int j = 0; j < b.length; j++) {
+        int production =
+            c.digits[i + j] + (a.digits[i] - '0') * (b.digits[j] - '0');
+        c.digits[i + j] = (char)production % 10;
+        c.digits[i + j + 1] += production / 10;
+      }
+    }
+    for (int i = 0; i < c.digits.length(); i++) {
+      c.digits[i] += '0';
+    }
+
+    if (c.digits[c.digits.length() - 1] == '0') {
+      c.digits = c.digits.substr(0, c.digits.length() - 1);
+    }
+    c.length = (unsigned int)c.digits.length();
+
+    return c;
+  }
 }
 
-ostream& operator<<(ostream& out, const inf_int& a) {
-  int i;
-
+std::ostream& operator<<(std::ostream& out, const inf_int& a) {
   if (a.thesign == false) {
     out << '-';
   }
-  for (i = a.length - 1; i >= 0; i--) {
+  for (int i = a.length - 1; i >= 0; i--) {
     out << a.digits[i];
   }
   return out;
 }
 
-void inf_int::Add(
-    const char num,
-    const unsigned int index)  // a의 index 자리수에 n을 더한다. 0<=n<=9, ex)
-                               // a가 391일때, Add(a, 2, 2)의 결과는 411
-{
-  if (this->length < index) {
-    this->digits = (char*)realloc(this->digits, index + 1);
+void inf_int::Add(const inf_int& a, const inf_int& b) {
+  int carry = 0;
 
-    if (this->digits == NULL) {  // 할당 실패 예외처리
-      cout << "Memory reallocation failed, the program will terminate." << endl;
+  for (unsigned int i = 0; i < b.length; i++) {
+    int addition = ((a.digits[i] - '0') + (b.digits[i] - '0') + carry);
+    this->digits.push_back(addition % 10 + '0');
+    carry = addition / 10;
+  }
 
-      exit(0);
+  for (unsigned int i = b.length; i < a.length; i++) {
+    int addition = ((a.digits[i] - '0') + carry);
+    this->digits.push_back(addition % 10 + '0');
+    carry = addition / 10;
+  }
+
+  if (carry) {
+    this->digits.push_back(carry + '0');
+  }
+}
+
+void inf_int::Sub(const inf_int& a, const inf_int& b) {
+  int carry = 0;
+
+  for (unsigned int i = 0; i < b.length; i++) {
+    int subtraction = ((a.digits[i] - '0') - (b.digits[i] - '0') - carry);
+    if (subtraction < 0) {
+      subtraction = subtraction + 10;
+      carry = 1;
+    } else {
+      carry = 0;
     }
-
-    this->length = index;               // 길이 지정
-    this->digits[this->length] = '\0';  // 널문자 삽입
+    this->digits.push_back(subtraction + '0');
   }
 
-  if (this->digits[index - 1] <
-      '0') {  // 연산 전에 '0'보다 작은 아스키값인 경우 0으로 채움. 쓰여지지
-              // 않았던 새로운 자리수일 경우 발생
-    this->digits[index - 1] = '0';
+  for (unsigned int i = b.length; i < a.length; i++) {
+    int subtraction = ((a.digits[i] - '0') - carry);
+    if (subtraction < 0) {
+      subtraction = subtraction + 10;
+      carry = 1;
+    } else {
+      carry = 0;
+    }
+    this->digits.push_back(subtraction + '0');
   }
 
-  this->digits[index - 1] += num - '0';  // 값 연산
-
-  if (this->digits[index - 1] > '9') {  // 자리올림이 발생할 경우
-    this->digits[index - 1] -= 10;  // 현재 자릿수에서 (아스키값) 10을 빼고
-    Add('1', index + 1);            // 윗자리에 1을 더한다
+  unsigned int countZero = 0;
+  for (unsigned int i = (unsigned int)this->digits.length() - 1; i > 0; i--) {
+    if (this->digits[i] == '0') {
+      countZero++;
+    } else {
+      break;
+    }
   }
+  this->digits = this->digits.substr(0, this->digits.length() - countZero);
+  this->length = (unsigned int)this->digits.length();
+}
+
+bool absCmp(const inf_int& a, const inf_int& b) {
+  if (a.length > b.length) {
+    return true;
+  } else if (a.length < b.length) {
+    return false;
+  } else {
+    for (unsigned int i = 0; i < a.length; i++) {
+      if (a.digits[i] > b.digits[i]) {
+        return true;
+      } else if (a.digits[i] < b.digits[i]) {
+        return false;
+      }
+    }
+    return false;
+  }
+}
+
+bool isZero(const inf_int& a) {
+  return (a.length == 1 && a.digits[a.length - 1] == '0' && a.thesign == true);
 }
