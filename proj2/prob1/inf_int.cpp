@@ -1,5 +1,7 @@
 #include "inf_int.h"
 
+#include <cstring>
+
 inf_int::inf_int() {
   this->digits = std::string();
 

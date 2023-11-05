@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "inf_int.h"
 
 class Calculator {
